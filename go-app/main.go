@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -42,6 +43,19 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		reqs.WithLabelValues("/").Inc()
 		fmt.Fprintf(w, "Hello - visit /simulate to change metric\n")
+	})
+
+	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		msg := `{"alert":"test from go container"}`
+		resp, err := http.Post(os.Getenv("N8N_WEBHOOK"), "application/json", bytes.NewBuffer([]byte(msg)))
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Fprintf(w, "N8N response: %s", string(body))
 	})
 
 	// Endpoint para simular valores de carga
